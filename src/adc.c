@@ -15,7 +15,7 @@ void ADC_init(void){
     ADC1->CR |=  ADC_CR_ADVREGEN;
     HAL_Delay(25);
     
-    ADC1->DIFSEL &= ~(1U << 5); // for single input adc channel 5
+    ADC1->DIFSEL &= ~(1 << 5); // for single input adc channel 5
     ADC1->CR &= ~ADC_CR_ADCALDIF; // for single ended coversation thats what we want
     ADC1->CR |=  ADC_CR_ADCAL; // start calibration bit
     while (ADC1->CR & ADC_CR_ADCAL){} // while calibrating hold here
@@ -25,7 +25,7 @@ void ADC_init(void){
     
     ADC1->SQR1 = (ADC1->SQR1 & ~(ADC_SQR1_L_Msk | ADC_SQR1_SQ1_Msk))| (5 << ADC_SQR1_SQ1_Pos); // 5 bits to determine channel reading
 
-    ADC1->ISR = ADC_ISR_ADRDY; // clear isr
+    ADC1->ISR = ADC_ISR_ADRDY; // clear
     ADC1->CR  |= ADC_CR_ADEN; // enable adc
     while ((ADC1->ISR & ADC_ISR_ADRDY) == 0){} // wait for init
 
