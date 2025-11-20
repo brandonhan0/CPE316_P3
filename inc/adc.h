@@ -7,5 +7,6 @@
 
 void ADC1_init(void);
 uint16_t ADC1_read(void);
+int adc_to_mV(uint16_t data);
 
 #endif
