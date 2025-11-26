@@ -1,4 +1,3 @@
-#include "stm32f4xx.h"
 #include "pwm.h"
 
 void PWM_init(void){
