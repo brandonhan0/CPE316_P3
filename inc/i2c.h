@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 void I2C_init(void);
-HAL_StatusTypeDef I2C1_read(void);
-HAL_StatusTypeDef I2C1_write(void);
+HAL_StatusTypeDef I2C1_read(uint16_t device_address, uint8_t register_address, uint8_t *data, uint16_t size);
+HAL_StatusTypeDef I2C1_write(uint16_t device_address, uint8_t register_address, uint8_t *data, uint16_t size);
 
 #endif
