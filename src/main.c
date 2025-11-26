@@ -99,7 +99,10 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-
+  //PA0 is ADC channel
+  //PA6 is PWM timer
+  //PA2, PA3 is USART, we wont use these just use micro usb shhhhhhh
+  //PB8, PB9 is I2C
 
 
   /* USER CODE END 2 */
