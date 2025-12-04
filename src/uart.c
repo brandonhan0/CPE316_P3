@@ -35,6 +35,6 @@ void UART_write_char(char c){
 
 void UART_write(const char *s){
     while (*s){
-        uart2_write_char(*s++);
+        UART_write_char(*s++);
     }
 }

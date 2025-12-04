@@ -7,19 +7,62 @@ I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart2;
 
+DMA_HandleTypeDef dma1;
+
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 
 uint8_t whoami;
+
+// ADC1 DMA (DMA1_Channel1)
+void DMA1_Channel1_IRQHandler(void)
+{
+    if (DMA1->ISR & DMA_ISR_TCIF1) {
+        DMA1->IFCR = DMA_IFCR_CTCIF1;   // clear TC flag
+        adc_ready = 1;
+
+        // Restart DMA data collection
+        DMA1_Channel1->CNDTR = N_SAMPLES;
+        DMA1_Channel1->CCR  |= DMA_CCR_EN;
+    }
+}
+
+// I2C3 RX DMA (DMA1_Channel3)
+void DMA1_Channel3_IRQHandler(void)
+{
+    if (DMA1->ISR & DMA_ISR_TCIF3) {
+        DMA1->IFCR = DMA_IFCR_CTCIF3;   // clear TC flag
+        i2c_ready = 1;
+
+        // Restart I2C data collection
+        DMA1_Channel3->CNDTR = N_SAMPLES * 2;
+        DMA1_Channel3->CCR  |= DMA_CCR_EN;
+    }
+}
+
 
 int main(void)
 {
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
+  
+  // INSERT OTHER INITS HERE
+
+  adc_dma_init();
+  i2c3_dma_init();
+  usart2_dma_init();
+
+  // START ADC AND I2C READS HERE
 
   while (1){ // we can run fsm here, need to init a timer int still so we can check adc & i2c ever so often.
-   
+    if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
+      adc_ready = 0;
+      i2c_ready = 0;
+
+      pack_samples(); // Build data string to send
+      usart2_dma_send(N_SAMPLES * 4);  // 4 bytes per combined sample
+    }
   }
 }
 
