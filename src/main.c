@@ -14,29 +14,27 @@ static void MX_GPIO_Init(void);
 
 uint8_t whoami;
 
-// ADC1 DMA (DMA1_Channel1)
+// Interrupt for when done transfering ADC
 void DMA1_Channel1_IRQHandler(void)
 {
     if (DMA1->ISR & DMA_ISR_TCIF1) {
         DMA1->IFCR = DMA_IFCR_CTCIF1;   // clear TC flag
         adc_ready = 1;
 
-        // Restart DMA data collection
-        DMA1_Channel1->CNDTR = N_SAMPLES;
-        DMA1_Channel1->CCR  |= DMA_CCR_EN;
+        // Turn off DMA data collection
+        DMA1_Channel1->CCR &= ~DMA_CCR_EN;
     }
 }
 
-// I2C3 RX DMA (DMA1_Channel3)
+// Interrupt for when done transfering I2C
 void DMA1_Channel3_IRQHandler(void)
 {
     if (DMA1->ISR & DMA_ISR_TCIF3) {
         DMA1->IFCR = DMA_IFCR_CTCIF3;   // clear TC flag
         i2c_ready = 1;
 
-        // Restart I2C data collection
-        DMA1_Channel3->CNDTR = N_SAMPLES * 2;
-        DMA1_Channel3->CCR  |= DMA_CCR_EN;
+        // Turn off I2C data collection
+        DMA1_Channel3->CCR &= ~DMA_CCR_EN;
     }
 }
 
