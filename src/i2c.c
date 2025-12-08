@@ -102,10 +102,7 @@ static void SHT3x_StartSingleShot(void)
 
     I2C3_Write(SHT3X_I2C_ADDR, cmd, 2);
 
-    // Datasheet: minimum 1 ms between commands, measurement time depends on repeatability.
-    // For high repeatability, a conservative delay ~15 ms is typical.
-    // TODO: implement a delay_ms() using SysTick or a timer.
-    HAL_Delay(15);
+    HAL_Delay(15); // Minimum 1 ms between commands
 }
 
 static int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH)
@@ -115,12 +112,10 @@ static int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH)
     // Read 6 bytes: T_MSB, T_LSB, CRC_T, RH_MSB, RH_LSB, CRC_RH
     I2C3_Read(SHT3X_I2C_ADDR, buf, 6);
 
-    // TODO: verify CRC for temperature and humidity using datasheet CRC-8 (poly 0x31, init 0xFF).
-
     *rawT  = ((uint16_t)buf[0] << 8) | buf[1];
     *rawRH = ((uint16_t)buf[3] << 8) | buf[4];
 
-    return 0; // return non-zero on CRC or I2C errors once you add checks
+    return 0;
 }
 
 static float SHT3x_Convert_Temperature_F(uint16_t rawT)
