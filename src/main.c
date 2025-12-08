@@ -84,9 +84,8 @@ void DMA1_Channel1_IRQHandler(void)
         DMA1->IFCR = DMA_IFCR_CTCIF1;   // clear TC flag
         adc_ready = 1;
 
-        // Restart DMA data collection
-        DMA1_Channel1->CNDTR = N_SAMPLES;
-        DMA1_Channel1->CCR  |= DMA_CCR_EN;
+        // Turn off DMA data collection
+        DMA1_Channel1->CCR &= ~DMA_CCR_EN;
     }
 }
 
@@ -97,9 +96,8 @@ void DMA1_Channel3_IRQHandler(void)
         DMA1->IFCR = DMA_IFCR_CTCIF3;   // clear TC flag
         i2c_ready = 1;
 
-        // Restart I2C data collection
-        DMA1_Channel3->CNDTR = N_SAMPLES * 2;
-        DMA1_Channel3->CCR  |= DMA_CCR_EN;
+        // Turn off I2C data collection
+        DMA1_Channel3->CCR &= ~DMA_CCR_EN;
     }
 }
 /* USER CODE END 0 */
@@ -163,21 +161,22 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	    if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
-	      adc_ready = 0;
-	      i2c_ready = 0;
+	  if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
+	    adc_ready = 0;
+	    i2c_ready = 0;
 	      
-	      pack_samples(); // Build data string to send
-	      usart2_dma_send(N_SAMPLES * 4);  // 4 bytes per combined sample
-	      if(pwm_status > 0){ 
-	    	  pwm_status++;
-	      }
-	      if(pwm_status > 100000) {
-	    	  pwm_status = -1;
-	    	  set_duty(0.0f);
-	      } // should drip for 100 seconds
-	      HAL_Delay(1);
-	    }
+	    pack_samples(); // Build data string to send
+	    usart2_dma_send(N_SAMPLES * 4);  // 4 bytes per combined sample
+    }
+	  if(pwm_status > 0){ 
+	    pwm_status++;
+	  }
+	  if(pwm_status > 100000) {
+	    pwm_status = -1;
+	    set_duty(0.0f);
+	  } // should drip for 100 seconds
+	  HAL_Delay(1);
+	  
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
