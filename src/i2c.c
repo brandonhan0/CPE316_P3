@@ -1,77 +1,47 @@
-
 #include "i2c.h"
 
 static void I2C3_Init(void)
 {
-	// GPIO_INIT
-    // 1) Enable GPIOC clock: see RM0351 RCC AHB2ENR description.
-    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOCEN;
+	//------------------- GPIO_INIT --------------------//
 
-    // 2) Set PC0, PC1 to Alternate Function mode (10b in MODER).
-    GPIOC->MODER &= ~((3u << (2u*I2C3_SCL_PIN)) |
-                      (3u << (2u*I2C3_SDA_PIN)));
-    GPIOC->MODER |=  ((2u << (2u*I2C3_SCL_PIN)) |
-                      (2u << (2u*I2C3_SDA_PIN)));
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOCEN; 	// Enable GPIOC clock
 
-    // 3) Open-drain outputs (required by I2C).
-    GPIOC->OTYPER |= (1u << I2C3_SCL_PIN) |
-                     (1u << I2C3_SDA_PIN);
+    GPIOC->MODER &= ~(0x3 | (0x3 << 2));	// Set PC0 to SCL and PC1 to SDA
+    GPIOC->MODER |=  (0x2 | (0x2 << 2));
 
-    // 4) High speed on these pins (optional but typical for I2C).
-    GPIOC->OSPEEDR |= (3u << (2u*I2C3_SCL_PIN)) |
-                      (3u << (2u*I2C3_SDA_PIN));
+    GPIOC->OTYPER |= (0x1 | (0x1 << 1));	// Open-drain
 
-    // 5) No internal pull-ups (assuming external pull-ups on the bus).
-    GPIOC->PUPDR &= ~((3u << (2u*I2C3_SCL_PIN)) |
-                      (3u << (2u*I2C3_SDA_PIN)));
+    GPIOC->OSPEEDR |= (0x3 | (0x3 << 2));	// High speed
 
-    // 6) Select AF4 (I2C) for PC0, PC1 in AFRL.
-    GPIOC->AFR[0] &= ~((0xFu << (4u*I2C3_SCL_PIN)) |
-                       (0xFu << (4u*I2C3_SDA_PIN)));
-    GPIOC->AFR[0] |=  ((4u  << (4u*I2C3_SCL_PIN)) |
-                       (4u  << (4u*I2C3_SDA_PIN)));
+    GPIOC->PUPDR &= ~(0x3 | (0x3 << 2));	// No internal pull-ups (temp sensor has internal pull-ups)
 
-    // I2C3_INIT
-    // 1) Enable I2C3 clock on APB1.
-    RCC->APB1ENR1 |= RCC_APB1ENR1_I2C3EN;
+    GPIOC->AFR[0] &= ~(0xF | (0xF << 4));	// Select AF4 (I2C) for PC0, PC1 in AFRL
+    GPIOC->AFR[0] |=  (0x4 | (0x4  << 4));
 
-    // 2) (Optional) Reset I2C3, then release from reset.
-    RCC->APB1RSTR1 |=  RCC_APB1RSTR1_I2C3RST;
+    //------------------- I2C3_INIT ----------------------//
+
+    RCC->APB1ENR1 |= RCC_APB1ENR1_I2C3EN;		// Enable I2C3 clock on APB1
+
+    RCC->APB1RSTR1 |=  RCC_APB1RSTR1_I2C3RST;	// Reset I2C3, then release from reset
     RCC->APB1RSTR1 &= ~RCC_APB1RSTR1_I2C3RST;
 
-    // 3) Disable I2C3 before changing timing.
-    I2C3->CR1 &= ~I2C_CR1_PE;
+    I2C3->CR1 &= ~I2C_CR1_PE;					// Disable I2C3 before changing timing
 
-    // 4) Configure timing for ~100 kHz.
-    // *** TODO: choose value from RM0351 I2C_TIMINGR examples
-    // based on your actual I2C kernel clock (fI2CCLK).
-    //
-    // Example placeholder (NOT a real value):
-    // I2C3->TIMINGR = 0x00XXXXXXXX;
-    //
-    // --> You must replace this with a correct TIMINGR value.
-    I2C3->TIMINGR = 0x00503d58u;    // TODO: fill in
+    I2C3->TIMINGR = 0x00503d58u;    			//
 
-    // 5) Optional: configure analog/digital filters, stretch, etc.
-    // For a basic setup we can leave CR1 mostly at reset defaults.
-
-    // 6) Enable I2C3 peripheral.
-    I2C3->CR1 |= I2C_CR1_PE;
+    I2C3->CR1 |= I2C_CR1_PE;					// Enable I2C3 peripheral
 }
 
 static void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len)
 {
     uint32_t tmp;
 
-    // Wait until bus is free.
+    // Wait until bus is free
     while (I2C3->ISR & I2C_ISR_BUSY) { }
 
     // Configure CR2: address, write, NBYTES, AUTOEND.
     tmp  = I2C3->CR2;
-    tmp &= ~(I2C_CR2_SADD   |
-             I2C_CR2_RD_WRN |
-             I2C_CR2_NBYTES |
-             I2C_CR2_AUTOEND);
+    tmp &= ~(I2C_CR2_SADD | I2C_CR2_RD_WRN | I2C_CR2_NBYTES | I2C_CR2_AUTOEND);
     tmp |= ((uint32_t)addr7 << 1);                  // 7-bit address in SADD[7:1]
     tmp |= ((uint32_t)len << I2C_CR2_NBYTES_Pos);   // number of bytes
     tmp |= I2C_CR2_AUTOEND;                         // automatic STOP after NBYTES
@@ -84,10 +54,7 @@ static void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len)
     for (uint8_t i = 0; i < len; i++)
     {
         // Wait until TXIS (transmit interrupt status) set = TXDR empty.
-        while (!(I2C3->ISR & I2C_ISR_TXIS))
-        {
-            // Optional: handle NACK or errors here.
-        }
+        while (!(I2C3->ISR & I2C_ISR_TXIS)) { }
         I2C3->TXDR = data[i];
     }
 
@@ -105,10 +72,7 @@ static void I2C3_Read(uint8_t addr7, uint8_t *data, uint8_t len)
 
     // Configure CR2: address, read, NBYTES, AUTOEND.
     tmp  = I2C3->CR2;
-    tmp &= ~(I2C_CR2_SADD   |
-             I2C_CR2_RD_WRN |
-             I2C_CR2_NBYTES |
-             I2C_CR2_AUTOEND);
+    tmp &= ~(I2C_CR2_SADD | I2C_CR2_RD_WRN | I2C_CR2_NBYTES | I2C_CR2_AUTOEND);
     tmp |= ((uint32_t)addr7 << 1);
     tmp |= ((uint32_t)len << I2C_CR2_NBYTES_Pos);
     tmp |= I2C_CR2_AUTOEND | I2C_CR2_RD_WRN;  // read transfer
@@ -120,10 +84,7 @@ static void I2C3_Read(uint8_t addr7, uint8_t *data, uint8_t len)
     for (uint8_t i = 0; i < len; i++)
     {
         // Wait until RXNE (receive data register not empty).
-        while (!(I2C3->ISR & I2C_ISR_RXNE))
-        {
-            // Optional: handle errors/timeouts here.
-        }
+        while (!(I2C3->ISR & I2C_ISR_RXNE)) { }
         data[i] = (uint8_t)I2C3->RXDR;
     }
 
@@ -162,10 +123,10 @@ static int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH)
     return 0; // return non-zero on CRC or I2C errors once you add checks
 }
 
-static float SHT3x_Convert_Temperature_C(uint16_t rawT)
+static float SHT3x_Convert_Temperature_F(uint16_t rawT)
 {
-    // T [°C] = -45 + 175 * ST / (2^16 - 1)
-    return -45.0f + 175.0f * ((float)rawT / 65535.0f);
+    // T [°F] = -49 + 315 * ST / (2^16 - 1)
+    return -49.0f + 315.0f * ((float)rawT / 65535.0f);
 }
 
 static float SHT3x_Convert_RH(uint16_t rawRH)
