@@ -25,5 +25,6 @@ void SHT3x_StartSingleShot(void);
 int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH);
 float SHT3x_Convert_Temperature_F(uint16_t);
 float SHT3x_Convert_RH(uint16_t);
+void SHT3x_Read6Bytes_DMA(uint8_t addr7);
 
 #endif /* INC_I2C_C_ */
