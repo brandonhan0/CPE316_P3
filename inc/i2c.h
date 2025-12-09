@@ -9,6 +9,7 @@
 #define INC_I2C_C_
 
 #include "stm32l476xx.h"
+#include "stm32l4xx_hal.h" // so we can use HAL functions
 #include "stdio.h"
 #include <string.h>
 
@@ -17,12 +18,12 @@
 #define I2C3_SDA_PIN        1u         // PC1
 #define SHT3X_CMD_SINGLE_SHOT_HIGH_NO_STRETCH   0x2400u   // from datasheet Table 9
 
-static void I2C3_Init(void);
-static void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len);
-static void I2C3_Read(uint8_t addr7, uint8_t *data, uint8_t len);
-static void SHT3x_StartSingleShot(void);
-static int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH);
-static float SHT3x_Convert_Temperature_F(uint16_t);
-static float SHT3x_Convert_RH(uint16_t);
+void I2C3_Init(void);
+void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len);
+void I2C3_Read(uint8_t addr7, uint8_t *data, uint8_t len);
+void SHT3x_StartSingleShot(void);
+int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH);
+float SHT3x_Convert_Temperature_F(uint16_t);
+float SHT3x_Convert_RH(uint16_t);
 
 #endif /* INC_I2C_C_ */
