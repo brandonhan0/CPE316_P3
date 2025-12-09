@@ -104,6 +104,8 @@ void DMA1_Channel3_IRQHandler(void)
         DMA1_Channel3->CCR &= ~DMA_CCR_EN;
     }
 }
+
+
 /* USER CODE END 0 */
 
 /**
@@ -160,20 +162,15 @@ int main(void)
 
   // intialize interupt timer
   RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //TIM2 clock enable
-  USART_write("set timer\r\n");
   TIM2->PSC  = 15;
-  USART_write("set timer\r\n");
-  TIM2->ARR  = 100000; //should activate once every half hour 3599999999/2
-  USART_write("set timer\r\n");
+  TIM2->ARR  = 1000000; //should activate once every half hour 3599999999/2
   TIM2->SR   = 0;
-  USART_write("set timer\r\n");
   TIM2->EGR  = TIM_EGR_UG;
-  USART_write("set timer\r\n");
   TIM2->DIER |= (1<<0);
-  USART_write("set timer\r\n");
+  USART_write("before nvic\r\n");
   TIM2->SR &= ~TIM_SR_UIF;
   NVIC->ISER[0] |= (1 << 28);
-  USART_write("set timer\r\n");
+  USART_write("after nvic\r\n");
   TIM2->CR1  = (1<<0);
 
 
@@ -183,14 +180,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  USART_write("checking...\r\n");
-	  USART_write("________________\r\n");
-	  HAL_Delay(1);
+	  USART_write("checking\r\n");
+	  USART_write("========\r\n");
+	  HAL_Delay(10);
 	  if(read_flag){
 		  read_flag = 0;
 		  USART_write("before adc read and i2c read\r\n");
-		  uint16_t adc = ADC1_read();
+		  uint16_t adc = ADC1_get_latest_sample(); // reads dma buffer
           SHT3x_StartSingleShot();
+          SHT3x_Read6Bytes_DMA(0x44); // sensor address is 0x44
           USART_write("after adc read and i2c read\r\n");
 		  if(adc < 0x05){ // change this value too
         	pwm_status = 1;
@@ -199,13 +197,24 @@ int main(void)
 
 	  }
 
+	  if(adc_ready) USART_write("adc ready ###############\r\n");
+	  if(i2c_ready) USART_write("i2c ready ###############\r\n");
+	  if(tx_busy) USART_write("txt busy \r\n");
+
+
+
+
 
 	  if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
+        USART_write("dma working\r\n");
+
 	    adc_ready = 0;
 	    i2c_ready = 0;
 
 	    pack_samples(); // Build data string to send
 	    usart2_dma_send(N_SAMPLES * 8);  // 8 bytes per combined sample
+        USART_write("packed samples\r\n");
+
     }
 	  if(pwm_status > 0){
 	    pwm_status++;
