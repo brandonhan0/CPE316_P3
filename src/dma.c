@@ -18,10 +18,10 @@ void adc_dma_init(void)
     // Enable DMA1 clock
     RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
 
-    
+
     DMA1_CSELR->CSELR &= ~((0xF << 0) | (0xF << 8) | (0xF << 24));   //ch1 ch3 ch7
     DMA1_CSELR->CSELR |= (5 << 0) | (3 << 8) | (2 << 24);
-    
+
     // Disable channel during config
     DMA1_Channel1->CCR &= ~DMA_CCR_EN;
 
@@ -60,8 +60,8 @@ void i2c3_dma_init(void)
     // Disable channel during config
     DMA1_Channel3->CCR &= ~DMA_CCR_EN;
 
-    
-    
+
+
     // Peripheral address: I2C3 RX data register
     DMA1_Channel3->CPAR  = (uint32_t)&I2C3->RXDR;
 
@@ -172,6 +172,10 @@ void usart2_dma_send(int len)
     DMA1_Channel7->CCR |= DMA_CCR_EN;
 }
 
+uint16_t ADC1_get_latest_sample(void) {
+    return adc_buf[0];   // or last index if you use N_SAMPLES > 1
+}
+
 // Interrupt for when DMA 1 Channel 7 finishes transfering
 void DMA1_Channel7_IRQHandler(void)
 {
@@ -184,5 +188,6 @@ void DMA1_Channel7_IRQHandler(void)
         tx_busy = 0; // new DMA send ready
     }
 }
+
 
 
