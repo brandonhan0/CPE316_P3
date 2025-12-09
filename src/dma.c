@@ -15,42 +15,75 @@ volatile uint8_t tx_busy   = 0;
 
 void adc_dma_init(void)
 {
+//    // Enable DMA1 clock
+//    RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
+//
+//
+//    DMA1_CSELR->CSELR &= ~((0xF << 0) | (0xF << 8) | (0xF << 24));   //ch1 ch3 ch7
+//    DMA1_CSELR->CSELR |= (0 << 0) | (3 << 8) | (2 << 24); // channel 1  0000, channel 3 0011, channel 7 0020
+//
+//    // Disable channel during config
+//    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+//
+//    // Peripheral address set to ADC1 data register
+//    DMA1_Channel1->CPAR  = (uint32_t)&ADC1->DR;
+//
+//    // Memory address set to our ADC buffer
+//    DMA1_Channel1->CMAR  = (uint32_t)adc_buf;
+//
+//    // Number of 16-bit samples
+//    DMA1_Channel1->CNDTR = N_SAMPLES;
+//
+//    // Configure channel:
+//    DMA1_Channel1->CCR = 0; // clear
+//    DMA1_Channel1->CCR =
+//        DMA_CCR_MINC    |       // increment memory
+//        DMA_CCR_MSIZE_0 |       // memory size = 16-bit
+//        DMA_CCR_PSIZE_0 |       // peripheral size = 16-bit
+//        DMA_CCR_TCIE    |       // transfer-complete interrupt
+//        DMA_CCR_PL_1    |
+//	    DMA_CCR_CIRC;           // high priority
+//
+//    // Enable DMA1 Channel 1 IRQ in NVIC
+//    NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+//
+//    DMA1_Channel1->CCR |= DMA_CCR_EN;
+//
+//    ADC1->CFGR |= ADC_CFGR_DMAEN;
+//
+//    ADC1->CFGR |= ADC_CFGR_CONT; // cont mode
+//
+//    ADC1->CR |= ADC_CR_ADSTART; // start collecting
     // Enable DMA1 clock
     RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
 
+    // Map ADC1 to DMA1 Channel 1, I2C3_RX to Ch3, USART2_TX to Ch7
+		DMA1_CSELR->CSELR &=
+			~((0xFu << 0)  |   // ch1
+			  (0xFu << 8)  |   // ch3
+			  (0xFu << 24));   // ch7
+		DMA1_CSELR->CSELR |=
+			(0u << 0)  |       // ch1 -> ADC1 (0000)
+			(3u << 8)  |       // ch3 -> I2C3_RX (0011)
+			(2u << 24);        // ch7 -> USART2_TX (0010)
 
-    DMA1_CSELR->CSELR &= ~((0xF << 0) | (0xF << 8) | (0xF << 24));   //ch1 ch3 ch7
-    DMA1_CSELR->CSELR |= (5 << 0) | (3 << 8) | (2 << 24);
+    // --- DMA1 Channel 1 config for ADC1 ---
+    DMA1_Channel1->CCR &= ~DMA_CCR_EN;          // disable during config
 
-    // Disable channel during config
-    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+    DMA1_Channel1->CPAR  = (uint32_t)&ADC1->DR; // peripheral: ADC DR
+    DMA1_Channel1->CMAR  = (uint32_t)adc_buf;   // memory: adc_buf[0]
+    DMA1_Channel1->CNDTR = N_SAMPLES;           // 1 sample
 
-    // Peripheral address set to ADC1 data register
-    DMA1_Channel1->CPAR  = (uint32_t)&ADC1->DR;
+    DMA1_Channel1->CCR  = 0;
+    DMA1_Channel1->CCR |=
+        DMA_CCR_MINC    |  // increment memory (OK even with N_SAMPLES=1)
+        DMA_CCR_MSIZE_0 |  // 16-bit mem
+        DMA_CCR_PSIZE_0 |  // 16-bit periph
+        DMA_CCR_TCIE    |  // transfer complete interrupt
+        DMA_CCR_PL_1;      // high priority
 
-    // Memory address set to our ADC buffer
-    DMA1_Channel1->CMAR  = (uint32_t)adc_buf;
-
-    // Number of 16-bit samples
-    DMA1_Channel1->CNDTR = N_SAMPLES;
-
-    // Configure channel:
-    DMA1_Channel1->CCR = 0; // clear
-    DMA1_Channel1->CCR =
-        DMA_CCR_MINC    |       // increment memory
-        DMA_CCR_MSIZE_0 |       // memory size = 16-bit
-        DMA_CCR_PSIZE_0 |       // peripheral size = 16-bit
-        DMA_CCR_TCIE    |       // transfer-complete interrupt
-        DMA_CCR_PL_1;           // high priority
-
-    // Enable DMA1 Channel 1 IRQ in NVIC
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
-    // Enable channel
-    DMA1_Channel1->CCR |= DMA_CCR_EN;
-
-    // Enable ADC DMA requests
-    ADC1->CFGR |= ADC_CFGR_DMAEN;
 }
 
 void i2c3_dma_init(void)
@@ -143,9 +176,7 @@ void pack_samples(void)
         }
     }
 
-    // Re-enable DMA data collection
-    DMA1_Channel1->CNDTR = N_SAMPLES;
-    DMA1_Channel1->CCR  |= DMA_CCR_EN;
+
 
     // Re-enable I2C data collection
     DMA1_Channel3->CNDTR = N_SAMPLES * 6;
@@ -186,6 +217,8 @@ void DMA1_Channel7_IRQHandler(void)
         DMA1_Channel7->CCR &= ~DMA_CCR_EN;
 
         tx_busy = 0; // new DMA send ready
+
+
     }
 }
 
