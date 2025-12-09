@@ -1,6 +1,6 @@
 #include "i2c.h"
 
-static void I2C3_Init(void)
+void I2C3_Init(void)
 {
 	//------------------- GPIO_INIT --------------------//
 
@@ -29,10 +29,10 @@ static void I2C3_Init(void)
 
     I2C3->TIMINGR = 0x00503d58u;    			//
 
-    I2C3->CR1 |= I2C_CR1_PE;					// Enable I2C3 peripheral
+    I2C3->CR1 |= I2C_CR1_PE | I2C_CR1_RXDMAEN;					// Enable I2C3 peripheral
 }
 
-static void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len)
+void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len)
 {
     uint32_t tmp;
 
@@ -93,7 +93,7 @@ static void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len)
 //     I2C3->ICR = I2C_ICR_STOPCF;
 // }
 
-static void SHT3x_StartSingleShot(void)
+void SHT3x_StartSingleShot(void)
 {
     uint8_t cmd[2];
 
