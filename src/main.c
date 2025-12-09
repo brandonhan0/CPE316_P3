@@ -18,7 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "adc.h"
+#include "i2c.h"
+#include "pwm.h"
+#include "usart.h"
+#include "dma.h"
+#include <stdio.h>
+#include <string.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -63,19 +69,17 @@ int pwm_status = -1;
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 // ADC1 DMA (DMA1_Channel1)
-
+uint16_t raw_temp;
+uint16_t raw_humid;
+int read_flag = 0;
+volatile uint8_t adc_ready = 0;
+volatile uint8_t i2c_ready = 0;
 void TIM2_IRQHandler(void) {
 
     if (TIM2->SR & TIM_SR_UIF) {
         TIM2->SR &= ~TIM_SR_UIF;
-        while(!(SPI1->SR & SPI_SR_TXE));
-        uint16_t adc = ADC1_read();
-        SHT3x_StartSingleShot();
-        if(adc < 0x05){ // change this value too
-        	pwm_status = 1;
-        	pwm_set_duty(1.0f);
-        }
-    }
+        read_flag = 1;
+  	        }
 }
 
 void DMA1_Channel1_IRQHandler(void)
@@ -131,27 +135,45 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  MX_ADC1_Init();
-  MX_I2C3_Init();
+
   /* USER CODE BEGIN 2 */
 
+  // i2c pc0 pc1
+  // adc pa0
+  // pwm pa6
 
-  USART_init(16000000U, 115200);
+  USART2_INIT();
+  USART_write("before ADC_init\r\n");
+  //MX_ADC1_Init();
+
   ADC_init();
+  USART_write("after ADC_init\r\n");
+  I2C3_Init();
+  USART_write("after I2C_init\r\n");
+
+  //PWM_init();
+  USART_write("after PWM_init\r\n");
   adc_dma_init();
   i2c3_dma_init();
   usart2_dma_init();
-  //I2C_init();
-  PWM_init();
-	// intialize interupt timer
+  USART_write("after DMA_init\r\n");
+
+  // intialize interupt timer
   RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //TIM2 clock enable
+  USART_write("set timer\r\n");
   TIM2->PSC  = 15;
-  TIM2->ARR  = 3599999999; //should activate once every hour
+  USART_write("set timer\r\n");
+  TIM2->ARR  = 100000; //should activate once every half hour 3599999999/2
+  USART_write("set timer\r\n");
   TIM2->SR   = 0;
+  USART_write("set timer\r\n");
   TIM2->EGR  = TIM_EGR_UG;
-  TIM2->DIER = (1<<0) | (1<<1);
-  NVIC->ISER[0] = (1 << 28);
+  USART_write("set timer\r\n");
+  TIM2->DIER |= (1<<0);
+  USART_write("set timer\r\n");
+  TIM2->SR &= ~TIM_SR_UIF;
+  NVIC->ISER[0] |= (1 << 28);
+  USART_write("set timer\r\n");
   TIM2->CR1  = (1<<0);
 
 
@@ -161,23 +183,38 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  USART_write("checking...\r\n");
+	  USART_write("________________\r\n");
+	  HAL_Delay(1);
+	  if(read_flag){
+		  read_flag = 0;
+		  USART_write("before adc read and i2c read\r\n");
+		  uint16_t adc = ADC1_read();
+          SHT3x_StartSingleShot();
+          USART_write("after adc read and i2c read\r\n");
+		  if(adc < 0x05){ // change this value too
+        	pwm_status = 1;
+        	PWM_set_duty(1.0f);
+		    }
+
+	  }
+
+
 	  if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
 	    adc_ready = 0;
 	    i2c_ready = 0;
-	      
+
 	    pack_samples(); // Build data string to send
-	    usart2_dma_send(N_SAMPLES * 8);  // 4 bytes per combined sample
+	    usart2_dma_send(N_SAMPLES * 8);  // 8 bytes per combined sample
     }
-    
-	  if(pwm_status > 0){ 
+	  if(pwm_status > 0){
 	    pwm_status++;
 	  }
-	  if(pwm_status > 100000) {
+	  if(pwm_status > 50000) {
 	    pwm_status = -1;
-	    set_duty(0.0f);
+	    PWM_set_duty(0.0f);
 	  } // should drip for 100 seconds
-	  HAL_Delay(1);
-	  
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
