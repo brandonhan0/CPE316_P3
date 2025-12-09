@@ -52,18 +52,18 @@ void ADC_init(void){
 }
 
 
-uint16_t ADC1_read(void){ // what were going to use in irq
-    ADC1->ISR = ADC_ISR_EOC | ADC_ISR_EOS | ADC_ISR_OVR; // clear flags
-    ADC1->CR  |= ADC_CR_ADSTART; // start conversion
-    uint32_t timeout = 1;
-    while ((ADC1->ISR & ADC_ISR_EOC) == 0) {
-        if (--timeout == 0) {
-            return 0xFFF0; // error value, or handle somehow
-        }
-    }
-    ADC1->DR;
-    return (uint16_t)ADC1->DR;
-}
+//uint16_t ADC1_read(void){ // what were going to use in irq
+//    ADC1->ISR = ADC_ISR_EOC | ADC_ISR_EOS | ADC_ISR_OVR; a// clear flags
+//    ADC1->CR  |= ADC_CR_ADSTART; // start conversion
+//    uint32_t timeout = 1;
+//    while ((ADC1->ISR & ADC_ISR_EOC) == 0) {
+//        if (--timeout == 0) {
+//            return 0xFFF0; // error value, or handle somehow
+//        }
+//    }
+//    ADC1->DR;
+//    return (uint16_t)ADC1->DR;
+//}
 
 int adc_to_mV(uint16_t data){
 	return (3300 * (int)data + 2047) / 4095;
