@@ -1,7 +1,5 @@
 #include "dma.h"
 
-#include "stm32l4xx.h" 
-
 #define N_SAMPLES  1
 
 // ADC buffer
@@ -13,8 +11,6 @@ volatile uint8_t  i2c_buf[N_SAMPLES * 6];
 // USART TX: 8 bytes per combined sample -> 2 for ADC, 6 for I2C
 uint8_t usart_tx_buf[N_SAMPLES * 8];
 
-volatile uint8_t adc_ready = 0;
-volatile uint8_t i2c_ready = 0;
 volatile uint8_t tx_busy   = 0;
 
 void adc_dma_init(void)
@@ -22,6 +18,10 @@ void adc_dma_init(void)
     // Enable DMA1 clock
     RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
 
+    
+    DMA1_CSELR->CSELR &= ~((0xF << 0) | (0xF << 8) | (0xF << 24));   //ch1 ch3 ch7
+    DMA1_CSELR->CSELR |= (5 << 0) | (3 << 8) | (2 << 24);
+    
     // Disable channel during config
     DMA1_Channel1->CCR &= ~DMA_CCR_EN;
 
@@ -60,6 +60,8 @@ void i2c3_dma_init(void)
     // Disable channel during config
     DMA1_Channel3->CCR &= ~DMA_CCR_EN;
 
+    
+    
     // Peripheral address: I2C3 RX data register
     DMA1_Channel3->CPAR  = (uint32_t)&I2C3->RXDR;
 
@@ -182,3 +184,5 @@ void DMA1_Channel7_IRQHandler(void)
         tx_busy = 0; // new DMA send ready
     }
 }
+
+
