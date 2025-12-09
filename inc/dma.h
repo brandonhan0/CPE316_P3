@@ -9,9 +9,11 @@
 #define N_SAMPLES  1
 
 extern volatile uint8_t tx_busy;
+extern volatile uint16_t adc_buf[];
+extern volatile uint8_t  i2c_buf[];
 extern uint8_t usart_tx_buf[N_SAMPLES * 8];
 
-
+uint16_t ADC1_get_latest_sample(void);
 void adc_dma_init(void);
 void i2c3_dma_init(void);
 void usart2_dma_init(void);
