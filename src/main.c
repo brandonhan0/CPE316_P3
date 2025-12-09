@@ -85,11 +85,10 @@ void TIM2_IRQHandler(void) {
 void DMA1_Channel1_IRQHandler(void)
 {
     if (DMA1->ISR & DMA_ISR_TCIF1) {
-        DMA1->IFCR = DMA_IFCR_CTCIF1;   // clear TC flag
+        DMA1->IFCR = DMA_IFCR_CTCIF1;
         adc_ready = 1;
-
-        // Turn off DMA data collection
         DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+
     }
 }
 
@@ -102,6 +101,7 @@ void DMA1_Channel3_IRQHandler(void)
 
         // Turn off I2C data collection
         DMA1_Channel3->CCR &= ~DMA_CCR_EN;
+
     }
 }
 
@@ -145,20 +145,15 @@ int main(void)
   // pwm pa6
 
   USART2_INIT();
-  USART_write("before ADC_init\r\n");
   //MX_ADC1_Init();
 
   ADC_init();
-  USART_write("after ADC_init\r\n");
   I2C3_Init();
-  USART_write("after I2C_init\r\n");
 
   //PWM_init();
-  USART_write("after PWM_init\r\n");
   adc_dma_init();
   i2c3_dma_init();
   usart2_dma_init();
-  USART_write("after DMA_init\r\n");
 
   // intialize interupt timer
   RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //TIM2 clock enable
@@ -167,10 +162,8 @@ int main(void)
   TIM2->SR   = 0;
   TIM2->EGR  = TIM_EGR_UG;
   TIM2->DIER |= (1<<0);
-  USART_write("before nvic\r\n");
   TIM2->SR &= ~TIM_SR_UIF;
   NVIC->ISER[0] |= (1 << 28);
-  USART_write("after nvic\r\n");
   TIM2->CR1  = (1<<0);
 
 
@@ -180,40 +173,58 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  USART_write("checking\r\n");
-	  USART_write("========\r\n");
-	  HAL_Delay(10);
+//	  if (!tx_busy) {
+//	      USART_write("checking\r\n");
+//	      USART_write("========\r\n");
+//	  }
 	  if(read_flag){
-		  read_flag = 0;
-		  USART_write("before adc read and i2c read\r\n");
-		  uint16_t adc = ADC1_get_latest_sample(); // reads dma buffer
-          SHT3x_StartSingleShot();
-          SHT3x_Read6Bytes_DMA(0x44); // sensor address is 0x44
-          USART_write("after adc read and i2c read\r\n");
-		  if(adc < 0x05){ // change this value too
-        	pwm_status = 1;
-        	PWM_set_duty(1.0f);
-		    }
+//		  read_flag = 0;
+//		  USART_write("before adc read and i2c read\r\n");
+//		  uint16_t adc = ADC1_get_latest_sample(); // reads dma buffer
+//          SHT3x_StartSingleShot();
+//          SHT3x_Read6Bytes_DMA(0x44); // sensor address is 0x44
+//          USART_write("after adc read and i2c read\r\n");
+//		  if(adc < 0x05){ // change this value too
+//        	pwm_status = 1;
+//        	PWM_set_duty(1.0f);
+//		    }
+
+		    read_flag = 0;
+
+		    // prepare one ADC conversion via DMA
+		    adc_ready = 0;
+
+		    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+		    DMA1_Channel1->CNDTR = 1;
+		    DMA1_Channel1->CCR |= DMA_CCR_EN;
+
+		    ADC1->ISR = ADC_ISR_EOC | ADC_ISR_EOS | ADC_ISR_OVR;  // clear flags
+		    ADC1->CR  |= ADC_CR_ADSTART;
+		    HAL_Delay(1);
+		    uint16_t adc = ADC1_get_latest_sample();
+		    SHT3x_StartSingleShot();
+		    SHT3x_Read6Bytes_DMA(0x44); // sensor address is 0x44
+		    if(adc < 0x05){ // change this value too
+		        pwm_status = 1;
+		        PWM_set_duty(1.0f);
+		  	    }
 
 	  }
 
-	  if(adc_ready) USART_write("adc ready ###############\r\n");
-	  if(i2c_ready) USART_write("i2c ready ###############\r\n");
-	  if(tx_busy) USART_write("txt busy \r\n");
+
+
 
 
 
 
 
 	  if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
-        USART_write("dma working\r\n");
 
 	    adc_ready = 0;
 	    i2c_ready = 0;
 
 	    pack_samples(); // Build data string to send
 	    usart2_dma_send(N_SAMPLES * 8);  // 8 bytes per combined sample
-        USART_write("packed samples\r\n");
 
     }
 	  if(pwm_status > 0){
