@@ -63,35 +63,35 @@ static void I2C3_Write(uint8_t addr7, const uint8_t *data, uint8_t len)
     I2C3->ICR = I2C_ICR_STOPCF;
 }
 
-static void I2C3_Read(uint8_t addr7, uint8_t *data, uint8_t len)
-{
-    uint32_t tmp;
+// static void I2C3_Read(uint8_t addr7, uint8_t *data, uint8_t len)
+// {
+//     uint32_t tmp;
 
-    // Wait until bus free.
-    while (I2C3->ISR & I2C_ISR_BUSY) { }
+//     // Wait until bus free.
+//     while (I2C3->ISR & I2C_ISR_BUSY) { }
 
-    // Configure CR2: address, read, NBYTES, AUTOEND.
-    tmp  = I2C3->CR2;
-    tmp &= ~(I2C_CR2_SADD | I2C_CR2_RD_WRN | I2C_CR2_NBYTES | I2C_CR2_AUTOEND);
-    tmp |= ((uint32_t)addr7 << 1);
-    tmp |= ((uint32_t)len << I2C_CR2_NBYTES_Pos);
-    tmp |= I2C_CR2_AUTOEND | I2C_CR2_RD_WRN;  // read transfer
-    I2C3->CR2 = tmp;
+//     // Configure CR2: address, read, NBYTES, AUTOEND.
+//     tmp  = I2C3->CR2;
+//     tmp &= ~(I2C_CR2_SADD | I2C_CR2_RD_WRN | I2C_CR2_NBYTES | I2C_CR2_AUTOEND);
+//     tmp |= ((uint32_t)addr7 << 1);
+//     tmp |= ((uint32_t)len << I2C_CR2_NBYTES_Pos);
+//     tmp |= I2C_CR2_AUTOEND | I2C_CR2_RD_WRN;  // read transfer
+//     I2C3->CR2 = tmp;
 
-    // Generate START
-    I2C3->CR2 |= I2C_CR2_START;
+//     // Generate START
+//     I2C3->CR2 |= I2C_CR2_START;
 
-    for (uint8_t i = 0; i < len; i++)
-    {
-        // Wait until RXNE (receive data register not empty).
-        while (!(I2C3->ISR & I2C_ISR_RXNE)) { }
-        data[i] = (uint8_t)I2C3->RXDR;
-    }
+//     for (uint8_t i = 0; i < len; i++)
+//     {
+//         // Wait until RXNE (receive data register not empty).
+//         while (!(I2C3->ISR & I2C_ISR_RXNE)) { }
+//         data[i] = (uint8_t)I2C3->RXDR;
+//     }
 
-    // Wait for STOP then clear flag
-    while (!(I2C3->ISR & I2C_ISR_STOPF)) { }
-    I2C3->ICR = I2C_ICR_STOPCF;
-}
+//     // Wait for STOP then clear flag
+//     while (!(I2C3->ISR & I2C_ISR_STOPF)) { }
+//     I2C3->ICR = I2C_ICR_STOPCF;
+// }
 
 static void SHT3x_StartSingleShot(void)
 {
@@ -105,27 +105,27 @@ static void SHT3x_StartSingleShot(void)
     HAL_Delay(15); // Minimum 1 ms between commands
 }
 
-static int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH)
-{
-    uint8_t buf[6];
+// static int SHT3x_ReadRaw(uint16_t *rawT, uint16_t *rawRH)
+// {
+//     uint8_t buf[6];
 
-    // Read 6 bytes: T_MSB, T_LSB, CRC_T, RH_MSB, RH_LSB, CRC_RH
-    I2C3_Read(SHT3X_I2C_ADDR, buf, 6);
+//     // Read 6 bytes: T_MSB, T_LSB, CRC_T, RH_MSB, RH_LSB, CRC_RH
+//     I2C3_Read(SHT3X_I2C_ADDR, buf, 6);
 
-    *rawT  = ((uint16_t)buf[0] << 8) | buf[1];
-    *rawRH = ((uint16_t)buf[3] << 8) | buf[4];
+//     *rawT  = ((uint16_t)buf[0] << 8) | buf[1];
+//     *rawRH = ((uint16_t)buf[3] << 8) | buf[4];
 
-    return 0;
-}
+//     return 0;
+// }
 
-static float SHT3x_Convert_Temperature_F(uint16_t rawT)
-{
-    // T [°F] = -49 + 315 * ST / (2^16 - 1)
-    return -49.0f + 315.0f * ((float)rawT / 65535.0f);
-}
+// static float SHT3x_Convert_Temperature_F(uint16_t rawT)
+// {
+//     // T [°F] = -49 + 315 * ST / (2^16 - 1)
+//     return -49.0f + 315.0f * ((float)rawT / 65535.0f);
+// }
 
-static float SHT3x_Convert_RH(uint16_t rawRH)
-{
-    // RH [%] = 100 * SRH / (2^16 - 1)
-    return 100.0f * ((float)rawRH / 65535.0f);
-}
+// static float SHT3x_Convert_RH(uint16_t rawRH)
+// {
+//     // RH [%] = 100 * SRH / (2^16 - 1)
+//     return 100.0f * ((float)rawRH / 65535.0f);
+// }

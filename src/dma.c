@@ -2,16 +2,16 @@
 
 #include "stm32l4xx.h" 
 
-#define N_SAMPLES  64
+#define N_SAMPLES  1
 
 // ADC buffer
 volatile uint16_t adc_buf[N_SAMPLES];
 
 // I2C3 RX buffer
-volatile uint8_t  i2c_buf[N_SAMPLES * 2];
+volatile uint8_t  i2c_buf[N_SAMPLES * 6];
 
-// USART TX: 4 bytes per combined sample -> 2 for ADC, 2 for I2C
-uint8_t usart_tx_buf[N_SAMPLES * 4];
+// USART TX: 8 bytes per combined sample -> 2 for ADC, 6 for I2C
+uint8_t usart_tx_buf[N_SAMPLES * 8];
 
 volatile uint8_t adc_ready = 0;
 volatile uint8_t i2c_ready = 0;
@@ -67,7 +67,7 @@ void i2c3_dma_init(void)
     DMA1_Channel3->CMAR  = (uint32_t)i2c_buf;
 
     // Number of BYTES to receive (2 per sample)
-    DMA1_Channel3->CNDTR = N_SAMPLES * 2;
+    DMA1_Channel3->CNDTR = N_SAMPLES * 6;
 
     // No msize or psize bc 8-bit transfers by default
     DMA1_Channel3->CCR = 0; // clear
@@ -90,6 +90,9 @@ void usart2_dma_init(void)
 {
     // DMA1 clock still already enabled
 
+    // Disable channel during config
+    DMA1_Channel7->CCR &= ~DMA_CCR_EN;
+
     // Base config for DMA1_Channel7 (USART2_TX)
     DMA1_Channel7->CCR = 0; // clear first
     DMA1_Channel7->CCR =
@@ -111,19 +114,31 @@ void pack_samples(void)
 {
     int idx = 0;
 
+    // for (int i = 0; i < N_SAMPLES; i++) {
+    //     // ADC (16-bit)
+    //     uint16_t a = adc_buf[i];
+
+    //     usart_tx_buf[idx++] = (uint8_t)(a & 0xFF);        // ADC low byte
+    //     usart_tx_buf[idx++] = (uint8_t)((a >> 8) & 0xFF); // ADC high byte
+
+    //     // I2C3 (2 bytes -> 16-bit)
+    //     uint8_t low  = i2c_buf[2 * i];
+    //     uint8_t high = i2c_buf[2 * i + 1];
+
+    //     usart_tx_buf[idx++] = low;   // I2C low byte
+    //     usart_tx_buf[idx++] = high;  // I2C high byte
+    // }
+
     for (int i = 0; i < N_SAMPLES; i++) {
-        // ADC (16-bit)
+        // ADC 16-bit
         uint16_t a = adc_buf[i];
+        usart_tx_buf[idx++] = (uint8_t)(a & 0xFF);         // ADC low
+        usart_tx_buf[idx++] = (uint8_t)((a >> 8) & 0xFF);  // ADC high
 
-        usart_tx_buf[idx++] = (uint8_t)(a & 0xFF);        // ADC low byte
-        usart_tx_buf[idx++] = (uint8_t)((a >> 8) & 0xFF); // ADC high byte
-
-        // I2C3 (2 bytes -> 16-bit)
-        uint8_t low  = i2c_buf[2 * i];
-        uint8_t high = i2c_buf[2 * i + 1];
-
-        usart_tx_buf[idx++] = low;   // I2C low byte
-        usart_tx_buf[idx++] = high;  // I2C high byte
+        // I2C 6-byte sample
+        for (int j = 0; j < 6; j++) {
+            usart_tx_buf[idx++] = i2c_buf[6 * i + j];
+        }
     }
 
     // Re-enable DMA data collection
@@ -131,7 +146,7 @@ void pack_samples(void)
     DMA1_Channel1->CCR  |= DMA_CCR_EN;
 
     // Re-enable I2C data collection
-    DMA1_Channel3->CNDTR = N_SAMPLES * 2;
+    DMA1_Channel3->CNDTR = N_SAMPLES * 6;
     DMA1_Channel3->CCR  |= DMA_CCR_EN;
 
 }

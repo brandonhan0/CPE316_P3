@@ -16,7 +16,7 @@ void ADC_init(void){
     HAL_Delay(25);
     
     ADC1->DIFSEL &= ~(1 << 5); // for single input adc channel 5
-    ADC1->CR &= ~ADC_CR_ADCALDIF; // for single ended coversation thats what we want
+    ADC1->CR &= ~ADC_CR_ADCALDIF; // for single ended conversation thats what we want
     ADC1->CR |=  ADC_CR_ADCAL; // start calibration bit
     while (ADC1->CR & ADC_CR_ADCAL){} // while calibrating hold here
     

@@ -70,7 +70,7 @@ void TIM2_IRQHandler(void) {
         TIM2->SR &= ~TIM_SR_UIF;
         while(!(SPI1->SR & SPI_SR_TXE));
         uint16_t adc = ADC1_read();
-        uint16_t i2c = I2C_read(); // change this
+        SHT3x_StartSingleShot();
         if(adc < 0x05){ // change this value too
         	pwm_status = 1;
         	pwm_set_duty(1.0f);
@@ -166,8 +166,9 @@ int main(void)
 	    i2c_ready = 0;
 	      
 	    pack_samples(); // Build data string to send
-	    usart2_dma_send(N_SAMPLES * 4);  // 4 bytes per combined sample
+	    usart2_dma_send(N_SAMPLES * 8);  // 4 bytes per combined sample
     }
+    
 	  if(pwm_status > 0){ 
 	    pwm_status++;
 	  }
