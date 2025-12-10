@@ -18,6 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 #include "adc.h"
 #include "i2c.h"
 #include "pwm.h"
@@ -25,9 +28,6 @@
 #include "dma.h"
 #include <stdio.h>
 #include <string.h>
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,16 +79,16 @@ void TIM2_IRQHandler(void) {
     if (TIM2->SR & TIM_SR_UIF) {
         TIM2->SR &= ~TIM_SR_UIF;
         read_flag = 1;
+
   	        }
 }
 
 void DMA1_Channel1_IRQHandler(void)
 {
     if (DMA1->ISR & DMA_ISR_TCIF1) {
-        DMA1->IFCR = DMA_IFCR_CTCIF1;
+        DMA1->IFCR = DMA_IFCR_CGIF1 | DMA_IFCR_CTCIF1 | DMA_IFCR_CTEIF1;
         adc_ready = 1;
         DMA1_Channel1->CCR &= ~DMA_CCR_EN;
-
     }
 }
 
@@ -149,11 +149,13 @@ int main(void)
 
   ADC_init();
   I2C3_Init();
-
-  //PWM_init();
+  PWM_init();
   adc_dma_init();
   i2c3_dma_init();
   usart2_dma_init();
+
+  DMA1_Channel1->CCR |= DMA_CCR_EN;
+  ADC1->CR |= ADC_CR_ADSTART;
 
   // intialize interupt timer
   RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //TIM2 clock enable
@@ -173,56 +175,34 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  if (!tx_busy) {
-//	      USART_write("checking\r\n");
-//	      USART_write("========\r\n");
-//	  }
-	  if(read_flag){
-//		  read_flag = 0;
-//		  USART_write("before adc read and i2c read\r\n");
-//		  uint16_t adc = ADC1_get_latest_sample(); // reads dma buffer
-//          SHT3x_StartSingleShot();
-//          SHT3x_Read6Bytes_DMA(0x44); // sensor address is 0x44
-//          USART_write("after adc read and i2c read\r\n");
-//		  if(adc < 0x05){ // change this value too
-//        	pwm_status = 1;
-//        	PWM_set_duty(1.0f);
-//		    }
+      PWM_set_duty(1.0f);
 
+	  if(read_flag){
 		    read_flag = 0;
 
-		    // prepare one ADC conversion via DMA
-		    adc_ready = 0;
+	        adc_ready = 0;
+	        i2c_ready = 0;
 
-		    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
-		    DMA1_Channel1->CNDTR = 1;
-		    DMA1_Channel1->CCR |= DMA_CCR_EN;
+		    DMA1_Channel1->CCR &= ~DMA_CCR_EN;   // disable channel
+		    DMA1_Channel1->CNDTR = 1;           // one 16-bit sample
+		    DMA1_Channel1->CCR |= DMA_CCR_EN;   // enable channel
 
-		    ADC1->ISR = ADC_ISR_EOC | ADC_ISR_EOS | ADC_ISR_OVR;  // clear flags
+	        ADC1->ISR |= ADC_ISR_OVR;
 		    ADC1->CR  |= ADC_CR_ADSTART;
-		    HAL_Delay(1);
-		    uint16_t adc = ADC1_get_latest_sample();
+
 		    SHT3x_StartSingleShot();
 		    SHT3x_Read6Bytes_DMA(0x44); // sensor address is 0x44
-		    if(adc < 0x05){ // change this value too
-		        pwm_status = 1;
-		        PWM_set_duty(1.0f);
-		  	    }
-
-	  }
-
-
-
-
-
-
-
+		    }
 
 	  if (adc_ready && i2c_ready && !tx_busy) { // If DMA Channels 1 (ADC) and 3 (I2C) are full and USART is ready
 
 	    adc_ready = 0;
 	    i2c_ready = 0;
-
+	    uint16_t adc = ADC1_get_latest_sample() & 0x0FFF;
+	    if(adc > 0xE74){ // change this value too
+	    	pwm_status = 1;
+	        PWM_set_duty(1.0f);
+	    }
 	    pack_samples(); // Build data string to send
 	    usart2_dma_send(N_SAMPLES * 8);  // 8 bytes per combined sample
 
@@ -352,88 +332,6 @@ static void MX_ADC1_Init(void)
 
 }
 
-/**
-  * @brief I2C3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C3_Init(void)
-{
-
-  /* USER CODE BEGIN I2C3_Init 0 */
-
-  /* USER CODE END I2C3_Init 0 */
-
-  /* USER CODE BEGIN I2C3_Init 1 */
-
-  /* USER CODE END I2C3_Init 1 */
-  hi2c3.Instance = I2C3;
-  hi2c3.Init.Timing = 0x00503D58;
-  hi2c3.Init.OwnAddress1 = 0;
-  hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c3.Init.OwnAddress2 = 0;
-  hi2c3.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c3, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c3, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C3_Init 2 */
-
-  /* USER CODE END I2C3_Init 2 */
-
-}
-
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
 
 /**
   * @brief GPIO Initialization Function
