@@ -7,10 +7,6 @@ import glob
 from openai import OpenAI
 
 
-
-# plots points and uses AI
-
-
 def sht3x_convert_temperature_c(rawT: int) -> float:
     """Convert raw 16-bit SHT3x temperature to °C."""
     return -45.0 + 175.0 * (rawT / 65535.0)
@@ -20,20 +16,22 @@ def sht3x_convert_rh(rawRH: int) -> float:
     """Convert raw 16-bit SHT3x humidity to %RH."""
     return 100.0 * (rawRH / 65535.0)
 
-def moisture_percent(rawM: int, DRY=3200, WET=1200) -> float:
+def moisture_percent(rawM: int, DRY=3900, WET=1000) -> float:
     """
     Convert raw ADC (0-4095) to soil moisture % using calibration values.
     DRY = ADC value in dry soil
     WET = ADC value in fully wet soil
     """
-    if DRY == WET:
-        return 0.0
-    if rawM < WET:
-        rawM = WET
-    elif rawM > DRY:
-        rawM = DRY
+    print(rawM) # rawM = (3900 dry - 1000 wet)
+    rawM_new = rawM
+    raw_percent =  (rawM / 4100) # should give decimal less than 1
+    print(f"raw_percent:{raw_percent}")
+    wet_percent = (1 - raw_percent) # 0.04 dry, 0.75 wet
+    print(f"wet_percent:{wet_percent}")
+    wet_percent = (wet_percent * 120.0)
+    print(f"scaled wet_percent:{wet_percent}")
+    return wet_percent
 
-    return 100.0 * (DRY - rawM) / (DRY - WET)
 # ================== USER SETTINGS ==================
 candidates = glob.glob("/dev/tty.usbmodem*")
 if not candidates:
@@ -47,7 +45,7 @@ MAX_POINTS = 200
 
 
 
-client = OpenAI(api_key="") # need to change key
+client = OpenAI(api_key="")
 ai_counter = 0
 def ai_response(temp, humid, moist):
     prompt = (
@@ -130,14 +128,15 @@ def update(frame):
     if temps:
         axT.set_ylim(min(temps)-1, max(temps)+1)
     if humids:
-        axH.set_ylim(min(humids)-2, max(humids)+2)
+        axH.set_ylim(0, 100)
     if moists:
-        axM.set_ylim(min(moists)-5, max(moists)+5)
+        #axM.set_ylim(min(moists)-5, max(moists)+5)
+        axM.set_ylim(0, 100)
 
     axT.set_xlim(0, MAX_POINTS)
 
     # ai_counter += 1
-    # if ai_counter % 50 == 0:
+    # if ai_counter % 200 == 0:
     #     try:
     #         ai_response(temp_c, rh_pct, moist_pct)
     #     except Exception as e:
