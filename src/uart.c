@@ -1,6 +1,15 @@
-#include "uart.h"
+#include <usart.h>
 
-void UART2_INIT(uint32_t pclk1_hz, uint32_t baud){
+/*
+ *
+ *
+ * THIS WORKS FINE DONT CHANGE
+ *
+ *
+ *
+ * */
+
+void USART2_INIT(void){
     RCC->AHB2ENR  |= RCC_AHB2ENR_GPIOAEN;
     RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN;
 
@@ -22,19 +31,18 @@ void UART2_INIT(uint32_t pclk1_hz, uint32_t baud){
     USART2->CR2 = 0;
     USART2->CR3 = 0;
 
-    uint32_t usartdiv = (pclk1_hz + (baud / 2)) / baud;
-    USART2->BRR = usartdiv;
+    USART2->BRR = 0x8B;
     USART2->CR1 |= USART_CR1_TE | USART_CR1_RE;
     USART2->CR1 |= USART_CR1_UE;
 }
 
-void UART_write_char(char c){
+void USART_write_char(char c){
 	while ((USART2->ISR & USART_ISR_TXE) == 0){}
     USART2->TDR = (uint8_t)c;
 }
 
-void UART_write(const char *s){
+void USART_write(const char *s){
     while (*s){
-        uart2_write_char(*s++);
+    	USART_write_char(*s++);
     }
 }
