@@ -15,45 +15,6 @@ volatile uint8_t tx_busy   = 0;
 
 void adc_dma_init(void)
 {
-//    // Enable DMA1 clock
-//    RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
-//
-//
-//    DMA1_CSELR->CSELR &= ~((0xF << 0) | (0xF << 8) | (0xF << 24));   //ch1 ch3 ch7
-//    DMA1_CSELR->CSELR |= (0 << 0) | (3 << 8) | (2 << 24); // channel 1  0000, channel 3 0011, channel 7 0020
-//
-//    // Disable channel during config
-//    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
-//
-//    // Peripheral address set to ADC1 data register
-//    DMA1_Channel1->CPAR  = (uint32_t)&ADC1->DR;
-//
-//    // Memory address set to our ADC buffer
-//    DMA1_Channel1->CMAR  = (uint32_t)adc_buf;
-//
-//    // Number of 16-bit samples
-//    DMA1_Channel1->CNDTR = N_SAMPLES;
-//
-//    // Configure channel:
-//    DMA1_Channel1->CCR = 0; // clear
-//    DMA1_Channel1->CCR =
-//        DMA_CCR_MINC    |       // increment memory
-//        DMA_CCR_MSIZE_0 |       // memory size = 16-bit
-//        DMA_CCR_PSIZE_0 |       // peripheral size = 16-bit
-//        DMA_CCR_TCIE    |       // transfer-complete interrupt
-//        DMA_CCR_PL_1    |
-//	    DMA_CCR_CIRC;           // high priority
-//
-//    // Enable DMA1 Channel 1 IRQ in NVIC
-//    NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-//
-//    DMA1_Channel1->CCR |= DMA_CCR_EN;
-//
-//    ADC1->CFGR |= ADC_CFGR_DMAEN;
-//
-//    ADC1->CFGR |= ADC_CFGR_CONT; // cont mode
-//
-//    ADC1->CR |= ADC_CR_ADSTART; // start collecting
     // Enable DMA1 clock
     RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
 
@@ -149,21 +110,6 @@ void pack_samples(void)
 {
     int idx = 0;
 
-    // for (int i = 0; i < N_SAMPLES; i++) {
-    //     // ADC (16-bit)
-    //     uint16_t a = adc_buf[i];
-
-    //     usart_tx_buf[idx++] = (uint8_t)(a & 0xFF);        // ADC low byte
-    //     usart_tx_buf[idx++] = (uint8_t)((a >> 8) & 0xFF); // ADC high byte
-
-    //     // I2C3 (2 bytes -> 16-bit)
-    //     uint8_t low  = i2c_buf[2 * i];
-    //     uint8_t high = i2c_buf[2 * i + 1];
-
-    //     usart_tx_buf[idx++] = low;   // I2C low byte
-    //     usart_tx_buf[idx++] = high;  // I2C high byte
-    // }
-
     for (int i = 0; i < N_SAMPLES; i++) {
         // ADC 16-bit
         uint16_t a = adc_buf[i];
@@ -221,6 +167,3 @@ void DMA1_Channel7_IRQHandler(void)
 
     }
 }
-
-
-
