@@ -175,7 +175,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      PWM_set_duty(1.0f);
+      // PWM_set_duty(1.0f);
 
 	  if(read_flag){
 		    read_flag = 0;
